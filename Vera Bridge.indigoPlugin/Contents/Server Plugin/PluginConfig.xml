@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<PluginConfig>
+	<SupportURL>http://wiki.indigodomo.com/doku.php?id=plugins:vera</SupportURL>
+	<Field id="host" type="textfield">
+		<Label>Host or address:</Label>
+	</Field>
+	<Field id="label1" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+		<Label>The hostname or IP address of your Vera.</Label>
+	</Field>
+	<Field id="port" type="textfield" defaultValue="3480">
+		<Label>Port:</Label>
+	</Field>
+	<Field id="label2" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+		<Label>The port your Vera is configured to use (most likely the default of 3480).</Label>
+	</Field>
+	<Field id="sep0" type="separator"/>
+	<Field id="threadDebug" type="checkbox">
+		<Label>Enable thread debug:</Label>
+		<Description>Not recommended</Description>
+	</Field>
+	<Field id="label3" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+		<Label>Enabling this option will add debugging information to your event log (when debugging is enabled) which will quickly fill up your log. Only use this option if instructed to by Indigo support.</Label>
+	</Field>
+</PluginConfig>

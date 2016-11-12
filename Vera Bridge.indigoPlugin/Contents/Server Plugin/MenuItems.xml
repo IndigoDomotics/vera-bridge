@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<MenuItems>
+	<MenuItem id="menu0">
+		<Name>Run Scene</Name>
+        <ConfigUI actionId="runScene"/>
+	</MenuItem>
+	<MenuItem id="sep1"/>
+	<MenuItem id="menu1">
+		<Name>Toggle Debugging</Name>
+        <CallbackMethod>toggleDebugging</CallbackMethod>
+	</MenuItem>
+</MenuItems>

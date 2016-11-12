@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Devices>
+	<DeviceFactory>
+		<Name>Synchronize Vera Device...</Name>
+		<ButtonTitle>Sync</ButtonTitle>
+		<ConfigUI>
+			<Name>Manage Vera Device</Name>
+			<Field type="menu" id="veraDeviceId" defaultValue="">
+				<Label>Vera Device:</Label>
+				<List class="self" filter="devices" method="_getNodeList" dynamicReload="true" />
+			</Field>
+			<Field type="button" id="refreshNodeList">
+				<Title>Refresh List</Title>
+				<CallbackMethod>refreshNodeList</CallbackMethod>
+			</Field>
+		</ConfigUI>
+	</DeviceFactory>
+    <Device type="relay" id="veraLock">
+        <Name>Door Lock</Name>
+    </Device>
+    <Device type="dimmer" id="veraDimmer">
+        <Name>Dimmer</Name>
+    </Device>
+    <Device type="relay" id="veraAppliance">
+        <Name>On/Off Device</Name>
+    </Device>
+    <Device type="thermostat" id="veraThermostat">
+        <Name>Thermostat</Name>
+    </Device>
+</Devices>

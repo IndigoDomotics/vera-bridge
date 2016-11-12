@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<Actions>
+	<Action id="runScene">
+		<Name>Run Scene</Name>
+		<CallbackMethod>runScene</CallbackMethod>
+		<ConfigUI>
+			<Field id="sceneId" type="menu" defaultValue="">
+				<Label>Select Scene</Label>
+				<List class="self" filter="scenes" method="_getNodeList" />
+			</Field>
+		</ConfigUI>
+	</Action>
+</Actions>
