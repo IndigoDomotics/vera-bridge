@@ -123,9 +123,9 @@ class Plugin(indigo.PluginBase):
 					dev.model = deviceTypeMap[1]
 					dev.replaceOnServer()
 					props = dev.pluginProps
-# 					if "watts" not in deviceDict and "SupportsEnergyMeter" in props:
-# 						del props["SupportsEnergyMeter"]
-# 						del props["SupportsEnergyMeterCurPower"]
+					if "watts" not in deviceDict and "SupportsEnergyMeter" in props:
+ 						del props["SupportsEnergyMeter"]
+ 						del props["SupportsEnergyMeterCurPower"]
 					if "batterylevel" in deviceDict:
 						props["SupportsBatteryLevel"] = True
 					props["address"] = valuesDict["veraDeviceId"]
@@ -137,9 +137,9 @@ class Plugin(indigo.PluginBase):
 				deviceTypeMap = veralib.modelForDeviceInfo(deviceDict)
 				self.debugLog("closedDeviceFactoryUi: creating device for: %s" % str(deviceDict))
 				newProps = indigo.Dict()
-# 				if "watts" in deviceDict:
-# 					newProps = {"SupportsEnergyMeterCurPower": True}
-# 					newProps = {"SupportsEnergyMeter": True}
+ 				if "watts" in deviceDict:
+ 					newProps = {"SupportsEnergyMeterCurPower": True}
+ 					newProps = {"SupportsEnergyMeter": True}
 				if "batterylevel" in deviceDict:
 					newProps["SupportsBatteryLevel"] = True
 				if deviceTypeMap:
@@ -280,6 +280,17 @@ class Plugin(indigo.PluginBase):
 				self.vera.stop()
 
 	########################################
+	def getUniqueDeviceName(self, seedName):
+		seedName = seedName.strip()
+		if (seedName not in indigo.devices):
+			return seedName
+		else:
+			counter = 1
+			candidate = seedName + " " + str(counter)
+			while candidate in indigo.devices:
+				counter = counter + 1
+				candidate = seedName + " " + str(counter)
+			return candidate	########################################
 	def processUpdate(self, updateDict):
 		self.debugLog("processUpdate called")
 		updateType = updateDict["updateType"]
@@ -291,38 +302,52 @@ class Plugin(indigo.PluginBase):
 			dev = indigo.devices.get(devId, None)
 			keyValueList = []
 			if dev and dev.enabled:
-				self.debugLog("processUpdate: found device (%s) updating: %s" % (dev.name, deviceInfo))
-				# This first set of if/elif will take care of dimmers, locks, and relays.
-				if "level" in deviceInfo:
-					keyValueList.append({'key':'brightnessLevel', 'value':int(deviceInfo["level"])})
-				elif "locked" in deviceInfo:
-					keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["locked"]))})
-				elif "status" in deviceInfo and dev.deviceTypeId != "veraThermostat":  #some versions of the API send an erroneous status for thermostats which have no on/off state
-					keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["status"]))})
-				
-				# Next, we deal with thermostat values
-				if u'mode' in deviceInfo:
-					keyValueList.append({'key':'hvacOperationMode', 'value':kThermostatModeLookup[deviceInfo["mode"]]})
-				if "heatsp" in deviceInfo:
-					keyValueList.append({'key':'setpointHeat', 'value':int(deviceInfo["heatsp"])})
-				if "coolsp" in deviceInfo:
-					keyValueList.append({'key':'setpointCool', 'value':int(deviceInfo["coolsp"])})
-				if "temperature" in deviceInfo:
-					keyValueList.append({'key':'temperatureInput1', 'value':int(deviceInfo["temperature"])})
-				if "fanmode" in deviceInfo:
-					keyValueList.append({'key':'hvacFanMode', 'value':kThermostatFanLookup[deviceInfo["fanmode"]]})
-				if "batterylevel" in deviceInfo:
-					uiString = "%s%%" % deviceInfo["batterylevel"]
-					keyValueList.append({'key':'batteryLevel', 'value':int(deviceInfo["batterylevel"]), 'uiValue':uiString})
-# 				if "watts" in deviceInfo:
-#					keyValueList.append({'key':'curEnergyLevel', 'value':int(deviceInfo["watts"])})
-# 				if "kwh" in deviceInfo:
-#					keyValueList.append({'key':'accumEnergyTotal', 'value':int(deviceInfo["kwh"])})
-				if len(keyValueList) > 0:
-					dev.updateStatesOnServer(keyValueList)
-				if "state" in deviceInfo:
-					if deviceInfo["state"] in veralib.kErrorStates:
-						dev.setErrorStateOnServer("device error")
+				try:
+					self.debugLog("processUpdate start: found device (%s) updating: %s" % (dev.name, deviceInfo))
+					# This first set of if/elif will take care of dimmers, locks, and relays.
+					if "level" in deviceInfo:
+						keyValueList.append({'key':'brightnessLevel', 'value':deviceInfo["level"]})
+					elif "locked" in deviceInfo:
+						keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["locked"]))})
+					elif "status" in deviceInfo and dev.deviceTypeId != "veraThermostat":  #some versions of the API send an erroneous status for thermostats which have no on/off state
+						keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["status"]))})
+					
+
+					# Next, we deal with thermostat and other values
+					if u'mode' in deviceInfo:
+						keyValueList.append({'key':'hvacOperationMode', 'value':kThermostatModeLookup[deviceInfo["mode"]]})
+					if "heatsp" in deviceInfo:
+						keyValueList.append({'key':'setpointHeat', 'value':int(deviceInfo["heatsp"])})
+					if "coolsp" in deviceInfo:
+						keyValueList.append({'key':'setpointCool', 'value':int(deviceInfo["coolsp"])})
+					if "temperature" in deviceInfo:
+						keyValueList.append({'key':'temperatureInput1', 'value':int(deviceInfo["temperature"])})
+					if "fanmode" in deviceInfo:
+						keyValueList.append({'key':'hvacFanMode', 'value':kThermostatFanLookup[deviceInfo["fanmode"]]})
+					if "batterylevel" in deviceInfo:
+						uiString = "%s%%" % deviceInfo["batterylevel"]
+						keyValueList.append({'key':'batteryLevel', 'value':int(deviceInfo["batterylevel"]), 'uiValue':uiString})
+					if "watts" in deviceInfo:
+						uiString = ("%2.2f W" % float(deviceInfo["watts"]))
+						keyValueList.append({'key':'curEnergyLevel', 'value':deviceInfo["watts"], 'uiValue':uiString})
+					if "kwh" in deviceInfo:
+						uiString = ("%2.3f kWh" % float(deviceInfo["kwh"]))
+						keyValueList.append({'key':'accumEnergyTotal', 'value':deviceInfo["kwh"], 'uiValue':uiString})
+
+					# Now we can process keyValueList and update all the device states
+					if len(keyValueList) > 0:
+						dev.updateStatesOnServer(keyValueList)
+
+					# And, finaly, check to see if the device is in an error state
+					if "state" in deviceInfo:
+						if deviceInfo["state"] in veralib.kErrorStates:
+							dev.setErrorStateOnServer("device error")
+
+					self.debugLog("processUpdate Finished: for device (%s)  : %s" % (dev.name, deviceInfo))
+
+				except Exception, e:
+					self.logger.exception(u"Error encountered in processUpdate")
+					return
 			else:
 				if dev:
 					self.debugLog("processUpdate: device with Vera ID %i found (%s) but is disabled, skipping update" % (devAddress, dev.name))
@@ -338,19 +363,6 @@ class Plugin(indigo.PluginBase):
 			if dev:
 				dev.setErrorStateOnServer("device deleted")
 				self.errorLog('Device "%s" (id: %s) deleted on the Vera' % (dev.name, devAddress))
-
-	########################################
-	def getUniqueDeviceName(self, seedName):
-		seedName = seedName.strip()
-		if (seedName not in indigo.devices):
-			return seedName
-		else:
-			counter = 1
-			candidate = seedName + " " + str(counter)
-			while candidate in indigo.devices:
-				counter = counter + 1
-				candidate = seedName + " " + str(counter)
-			return candidate
 
 	########################################
 	# Action Methods
