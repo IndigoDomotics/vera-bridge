@@ -123,9 +123,9 @@ class Plugin(indigo.PluginBase):
 					dev.model = deviceTypeMap[1]
 					dev.replaceOnServer()
 					props = dev.pluginProps
-					if "watts" not in deviceDict and "SupportsEnergyMeter" in props:
+ 					if "watts" not in deviceDict and "SupportsEnergyMeter" in props:
  						del props["SupportsEnergyMeter"]
- 						del props["SupportsEnergyMeterCurPower"]
+						del props["SupportsEnergyMeterCurPower"]
 					if "batterylevel" in deviceDict:
 						props["SupportsBatteryLevel"] = True
 					props["address"] = valuesDict["veraDeviceId"]
@@ -137,9 +137,9 @@ class Plugin(indigo.PluginBase):
 				deviceTypeMap = veralib.modelForDeviceInfo(deviceDict)
 				self.debugLog("closedDeviceFactoryUi: creating device for: %s" % str(deviceDict))
 				newProps = indigo.Dict()
- 				if "watts" in deviceDict:
- 					newProps = {"SupportsEnergyMeterCurPower": True}
- 					newProps = {"SupportsEnergyMeter": True}
+				if "watts" in deviceDict:
+ 					newProps["SupportsEnergyMeterCurPower"] = True
+ 					newProps["SupportsEnergyMeter"] = True
 				if "batterylevel" in deviceDict:
 					newProps["SupportsBatteryLevel"] = True
 				if deviceTypeMap:
@@ -280,17 +280,6 @@ class Plugin(indigo.PluginBase):
 				self.vera.stop()
 
 	########################################
-	def getUniqueDeviceName(self, seedName):
-		seedName = seedName.strip()
-		if (seedName not in indigo.devices):
-			return seedName
-		else:
-			counter = 1
-			candidate = seedName + " " + str(counter)
-			while candidate in indigo.devices:
-				counter = counter + 1
-				candidate = seedName + " " + str(counter)
-			return candidate	########################################
 	def processUpdate(self, updateDict):
 		self.debugLog("processUpdate called")
 		updateType = updateDict["updateType"]
@@ -310,8 +299,7 @@ class Plugin(indigo.PluginBase):
 					elif "locked" in deviceInfo:
 						keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["locked"]))})
 					elif "status" in deviceInfo and dev.deviceTypeId != "veraThermostat":  #some versions of the API send an erroneous status for thermostats which have no on/off state
-						keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["status"]))})
-					
+						keyValueList.append({'key':'onOffState', 'value':bool(int(deviceInfo["status"]))})	
 
 					# Next, we deal with thermostat and other values
 					if u'mode' in deviceInfo:
@@ -365,8 +353,57 @@ class Plugin(indigo.PluginBase):
 				self.errorLog('Device "%s" (id: %s) deleted on the Vera' % (dev.name, devAddress))
 
 	########################################
+	def getUniqueDeviceName(self, seedName):
+		seedName = seedName.strip()
+		if (seedName not in indigo.devices):
+			return seedName
+		else:
+			counter = 1
+			candidate = seedName + " " + str(counter)
+			while candidate in indigo.devices:
+				counter = counter + 1
+				candidate = seedName + " " + str(counter)
+			return candidate
+
+	########################################
 	# Action Methods
 	########################################
+	# General Action callbacks first
+	######################
+	def actionControlUniversal(self, action, dev):
+		###### BEEP ######
+		if action.deviceAction == indigo.kUniversalAction.Beep:
+			# Beep the hardware module (dev) here:
+			# This is dumy code 9n case someday it is needed
+			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "beep request"))
+
+		###### ENERGY UPDATE ######
+		elif action.deviceAction == indigo.kUniversalAction.EnergyUpdate:
+			self.debugLog(u"received request for \"%s\" %s" % (dev.name, action))
+			# dev=indigo.devices[action.deviceId] # "Bergerie Patio Light"
+			self.debugLog(u"found device \"%s %s" % (dev.name, dev.address))
+			# Request hardware module (dev) for its most recent meter data here:
+			self.vera._update(fullUpdate=False, updateDevAddress=dev.address)
+
+			#self._refreshStatesFromHardware(dev, True)
+
+		###### ENERGY RESET ######
+		elif action.deviceAction == indigo.kUniversalAction.EnergyReset:
+			# Request that the hardware module (dev) reset its accumulative energy usage data here:
+			indigo.server.log(u"received request for \"%s\" %s" % (dev.name, "energy usage reset"))
+			# Just ell Indigo to reset it by setting the value to 0.
+			# This will automatically reset Indigo's time stamp for the accumulation.
+			self.vera._kwhReset(dev.address)
+			dev.updateStateOnServer("accumEnergyTotal", 0.0)
+
+
+		###### STATUS REQUEST ######
+		elif action.deviceAction == indigo.kUniversalAction.RequestStatus:
+			indigo.server.log(u"received request for \"%s\" %s" % (dev.name, "status request"))
+			# Query hardware module (dev) for its current status here:
+			# Another placeholder for the future
+			# self._refreshStatesFromHardware(dev, True)
+
 	def actionControlDimmerRelay(self, action, dev):
 		if (self.vera and self.vera.isAlive() and self.vera.commandQueue and dev.enabled) or self.demoMode:
 			if dev.deviceTypeId == "veraLock":
@@ -516,4 +553,11 @@ class Plugin(indigo.PluginBase):
 			self.pluginPrefs["showDebugInfo"] = True
 		self.debug = not self.debug
 
+	def updateAll(self):
+		if self.demoMode:
+			self.errorLog("Update all not available in demo mode.")
+			return
+		indigo.server.log("Starting update all")
+		self.vera._update(fullUpdate=True,)
+		
 
