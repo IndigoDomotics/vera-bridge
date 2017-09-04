@@ -6,7 +6,12 @@
 	</MenuItem>
 	<MenuItem id="sep1"/>
 	<MenuItem id="menu1">
-		<Name>Toggle Debugging</Name>
-        <CallbackMethod>toggleDebugging</CallbackMethod>
+		<Name>Update All</Name>
+        <CallbackMethod>updateAll</CallbackMethod>
 	</MenuItem>
+        <MenuItem id="sep2"/>
+    <MenuItem id="menu2">
+        <Name>Toggle Debugging</Name>
+        <CallbackMethod>toggleDebugging</CallbackMethod>
+    </MenuItem>
 </MenuItems>
