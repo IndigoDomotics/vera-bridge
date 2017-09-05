@@ -22,6 +22,7 @@ import indigo
 #
 kPollingUrl = u"/data_request?id=lu_sdata&output_format=json"
 kActionUrl = u"data_request?id=lu_action&output_format=json"
+kResetKwhUrl = u"data_request?id=action"
 kRunSceneServiceString = "SceneNum=%i&serviceId=urn:micasaverde-com:serviceId:HomeAutomationGateway1&action=RunScene"
 kOnOffServiceString = "DeviceNum=%i&serviceId=urn:upnp-org:serviceId:SwitchPower1&action=SetTarget&newTargetValue=%i"
 kBrightnessServiceString = "DeviceNum=%i&serviceId=urn:upnp-org:serviceId:Dimming1&action=SetLoadLevelTarget&newLoadlevelTarget=%i"
@@ -31,22 +32,41 @@ kThermostatServiceString_CoolSetpoint = "DeviceNum=%i&serviceId=urn:upnp-org:ser
 kThermostatServiceString_Mode = "DeviceNum=%i&serviceId=urn:upnp-org:serviceId:HVAC_UserOperatingMode1&action=SetModeTarget&NewModeTarget=%s"
 kThermostatServiceString_FanMode = "DeviceNum=%i&serviceId=urn:upnp-org:serviceId:HVAC_FanOperatingMode1&action=SetMode&NewMode=%s"
 kTimeout = 10
-kPollInterval = 3
+kPollInterval = 30
 kFullUpdateInterval = 60 * 30  # do a full update every 30 minutes
+#  See http://wiki.micasaverde.com/index.php/Luup_Device_Categories and http://wiki.micasaverde.com/index.php/Luup_UPNP_Files for device catagory (type) information
 kSupportedDeviceTypes = [2, 3, 5, 7]
 kVeraDeviceTypeMap = {
 	0									: None,
 	1									: None,
 	2									: [u"veraDimmer", "Dimmer Module"],
 	3									: [u"veraAppliance", "On/Off Module"],
-	4									: None,
+	4									: [u"VeraSecurity", "Security Sensor"],
 	5									: [u"veraThermostat", "Thermostat"],
-	7									: [u"veraLock", "Door Lock"],
-	8									: None,
-	16									: None,
-	17									: None,
-	18									: None,
-	21									: None,
+	6 									: [u"veraCamera", "Camera"],
+	7 									: [u"veraLock", "Door Lock"],
+	8									: ["veraWindow", "Window Covering"],
+	9 									: None,
+	10 									: None,
+	11									: None,
+	12 									: ["veraSensor", "Generic Sensor"],
+	13									: None,
+	14									: None,
+	15									: None,
+	16									: ["veraHumiditySensor", "Humidity Sensor"],
+	17									: ["veraTempSensor", "Temperature Sensor"],
+	18									: ["veraLightSensor", "Light Sensor"],
+	19 									: None,
+	20									: None,
+	21									: ["veraPowerMeter", "Power Meter"],
+	22									: None,
+	23									: None,
+	24									: ["veraSiren", "Siren"],
+	25 									: ["veraWeather", "Weather"],
+	26									: None,
+	27 									: ["veraAppliance", "Appliance"],
+	28									: ["veraUvSensor", "UV Sensor"],
+	29 									: ["veraMouseTrap", "Mouse Trap"]
 }
 kThermostatModes = {
 	"Off"				: "Off",
@@ -160,18 +180,32 @@ class Vera(threading.Thread):
 		self.logMethod("exiting run loop")
 		
 	########################################
-	def _update(self, fullUpdate=False):
-		self.logMethod("_update: starting at %s" % datetime.today().strftime("%H:%M:%S"))
-		if fullUpdate:
+	def _update(self,  updateDevAddress=0, fullUpdate=False):
+		self.logMethod("_update: starting at %s" % datetime.today().strftime("%H:%M:%S"), isError=False)
+		
+		if (fullUpdate or int(updateDevAddress) >0):
 			self.lastLoadTime = 0
 			self.lastDataVersion = 0
 		theUrl = "http://%s:%i/%s&loadtime=%i&dataversion=%i" % (self.address, self.port, kPollingUrl, self.lastLoadTime, self.lastDataVersion)
-		self.logMethod("_update: url: %s" % theUrl)
+		self.logMethod("_update: url: %s" % theUrl, isError=False)
+		self.logMethod("_update: devAddress %s" % updateDevAddress, isError=False)
+
 		try:
 			f = urllib2.urlopen(theUrl)
 			infoDict = json.load(f)
 			f.close()
-			if infoDict["full"]:
+			# self.logMethod("_update: dict: %s" % infoDict, isError=True)
+
+			if int(updateDevAddress) > 0:
+				# Just update a single device
+
+				newDeviceDict = {}
+				for deviceInfo in infoDict.get("devices", []):
+					if int(deviceInfo["id"]) == int(updateDevAddress):
+						self.logMethod("_update: partial deviceInfo:\n%s" % str(deviceInfo), isError=False)
+						self.updateQueue.put_nowait({"updateType": "updateDevice", "device": deviceInfo})
+
+			elif infoDict["full"]:
 				if self.threadDebug:
 					s = json.dumps(infoDict, sort_keys=True, indent=4)
 					self.logMethod("_update: doing full update with infoDict:\n\n%s\n\n" % s)
@@ -202,17 +236,21 @@ class Vera(threading.Thread):
 				self.logMethod("_update: devices:\n%s" % str(self.devices))
 				self.fullUpdateNow = False
 				self.lastFullUpdate = int(time.time())
+
 			else:
 				# Not a full update - so we don't check and notify for deletions, etc.
 				for sceneInfo in infoDict.get("scenes", []):
 					if sceneInfo["active"]:
 						self.scenes[sceneInfo["id"]] = sceneInfo
+				
 				for deviceInfo in infoDict.get("devices", []):
-					self.logMethod("_update: partial deviceInfo:\n%s" % str(deviceInfo))
+					self.logMethod("_update: partial deviceInfo:\n%s" % str(deviceInfo), isError=False)
 					self.updateQueue.put_nowait({"updateType": "updateDevice", "device": deviceInfo})
+				
 				# if we're over 30 minutes from the last full update, do it now
 				if (int(time.time()) - kFullUpdateInterval) > self.lastFullUpdate:
 					self.fullUpdateNow = True
+
 			self.lastLoadTime = infoDict.get("loadtime", 0)
 			self.lastDataVersion = infoDict.get("dataversion", 0)
 		except urllib2.URLError, e:
@@ -226,7 +264,31 @@ class Vera(threading.Thread):
 		finally:
 			self.logMethod("_update: ending at %s" % datetime.today().strftime("%H:%M:%S"))
 
-				
+
+	########################################
+	def _kwhReset(self,  resetDevAddress):
+		self.logMethod("_reset: starting at %s" % datetime.today().strftime("%H:%M:%S"), isError=False)
+
+		theUrl = "http://%s:%i/%s&DeviceNum=%s&serviceId=urn:micasaverde-com:serviceId:EnergyMetering1&action=ResetKWH" % (self.address, self.port, kResetKwhUrl, resetDevAddress)
+		self.logMethod("_reset: url: %s" % theUrl, isError=False)
+		self.logMethod("_reset: devAddress %s" % resetDevAddress, isError=False)
+
+		try:
+			f = urllib2.urlopen(theUrl)
+			f.close()
+			
+		except urllib2.URLError, e:
+			self.logMethod("_update: url open error:\n%s" % traceback.format_exc(10))
+		except httplib.BadStatusLine, e:
+			self.logMethod("The Vera isn't responding correctly. Make sure it's available. If it's performing a software upgrade, wait until it's finished then restart the plugin.")
+		except KeyError, e:
+			self.logMethod("_update: key error:\n%s" % traceback.format_exc(10))
+		except Exception, e:
+			self.logMethod("_update: vera update error: %s" % traceback.format_exc(10), isError=True)
+		finally:
+			self.logMethod("_update: ending at %s" % datetime.today().strftime("%H:%M:%S"))
+
+
 	########################################
 	def _executeUrl(self, url, deviceName, command):
 		try:
