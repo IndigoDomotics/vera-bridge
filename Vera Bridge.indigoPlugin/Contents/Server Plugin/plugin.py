@@ -404,7 +404,7 @@ class Plugin(indigo.PluginBase):
             indigo.server.log(u"received request for \"%s\" %s" % (dev.name, "status request"))
             # Query hardware module (dev) for its current status here:
             # Another placeholder for the future
-            # self._refreshStatesFromHardware(dev, True)
+            self.updateAll()
 
     def actionControlDimmerRelay(self, action, dev):
         if (self.vera and self.vera.isAlive() and self.vera.commandQueue and dev.enabled) or self.demoMode:
