@@ -15,8 +15,7 @@ to install.
 How to use
 ----------
 
-See the [docs in the Indigo Domotics
-wiki](http://wiki.indigodomo.com/doku.php?id=plugins:vera) for details.
+See the [wiki](https://github.com/IndigoDomotics/vera-bridge/wiki) for details.
 
 Contributing
 ------------
