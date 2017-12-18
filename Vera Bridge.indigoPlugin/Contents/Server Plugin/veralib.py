@@ -10,9 +10,8 @@ import traceback
 from datetime import datetime, time
 import Queue
 import time
-import simplejson as json
+import json
 import copy
-import indigo
 
 ################################################################################
 # Globals

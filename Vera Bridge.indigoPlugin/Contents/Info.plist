@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>PluginVersion</key>
-	<string>2.1.2</string>
+	<string>2.2.0</string>
 	<key>ServerApiVersion</key>
 	<string>2.0</string>
 	<key>IwsApiVersion</key>
@@ -13,12 +13,12 @@
 	<key>CFBundleIdentifier</key>
 	<string>com.perceptiveautomation.indigoplugin.vera</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>http://wiki.indigodomo.com/doku.php?id=plugins:vera</string>
+			<string>https://github.com/IndigoDomotics/vera-bridge/wiki</string>
 		</dict>
 	</array>
 </dict>
